@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useQuizStore } from '@/lib/store';
-import { generatePlan, generateTimeline, generateDashboardMeta, generateSmartCards } from '@/lib/algorithms';
+import { generatePlan, generateTimeline, generateDashboardMeta, generateSmartCards, generateSkinHairProfile } from '@/lib/algorithms';
 import { GeneratedPlan } from '@/lib/types';
 import { LiveDashboard } from '@/lib/dashboard-types';
 import toast from 'react-hot-toast';
@@ -12,6 +12,7 @@ import { BentoCard, InfoCard } from '@/components/features/dashboard-components'
 import { BioTimeline } from '@/components/features/BioTimeline';
 import { NutritionCard, HydrationCard, EnergyCard } from '@/components/features/SmartCard';
 import { PromoModal } from '@/components/features/PromoModal';
+import { SkinHairCard } from '@/components/features/SkinHairCard';
 import { Activity, Sun, Utensils } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -37,42 +38,51 @@ export default function DashboardPage() {
             // استخراج پارامترهای جدید برای الگوریتم‌های پیشرفته
             const currentHour = new Date().getHours();
             // مقدار پیش‌فرض اگر کاربر وارد نکرده باشد
-            const wakeTime = data.wakeTime || '07:00'; 
+            const wakeTime = data.wakeTime || '07:00';
             const mainGoal = data.mainGoal || 'health_detox';
 
             // --- فراخوانی توابع با آرگومان‌های جدید ---
-            
+
             // 1. تایم‌لاین هوشمند (نیاز به ساعت بیداری دارد)
             const timeline = generateTimeline(
-                generated.chronotype, 
-                generated.somatotype, 
-                wakeTime, 
+                generated.chronotype,
+                generated.somatotype,
+                wakeTime,
                 currentHour
             );
 
             // 2. دیتای متا (سلام و انرژی نسبی)
             const dashboardMeta = generateDashboardMeta(
-                generated.chronotype, 
-                wakeTime, 
+                generated.chronotype,
+                wakeTime,
                 currentHour
             );
 
             // 3. کارت‌های هوشمند (نیاز به هدف کاربر دارد)
             const smartCards = generateSmartCards(
-                generated.somatotype, 
-                generated.chronotype, 
+                generated.somatotype,
+                generated.chronotype,
                 mainGoal
+            );
+
+            // 4. پروفایل درمو-ژنتیک (پوست و مو)
+            const skinHairProfile = generateSkinHairProfile(
+                generated.somatotype,
+                generated.chronotype,
+                data.stressLevel || 'medium',
+                data.age || 30
             );
             // ----------------------------------------
 
             setLiveDashboard({
                 dashboard_meta: dashboardMeta,
                 smart_cards: smartCards,
+                skin_hair_profile: skinHairProfile,
                 timeline
             });
 
             toast.success(`تیپ بدنی شناسایی شد: ${generated.somatotype === 'ectomorph' ? 'پیکرتراش (Ecto)' : generated.somatotype === 'endomorph' ? 'درشت‌نقش (Endo)' : 'ورزشی (Meso)'}`);
-            
+
             await new Promise(r => setTimeout(r, 800));
 
             setLoading(false);
@@ -125,25 +135,22 @@ export default function DashboardPage() {
                 </motion.div>
             </header>
 
-            {/* Smart Cards Grid */}
+            {/* Smart Bento Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                <NutritionCard
-                    title={liveDashboard.smart_cards.nutrition.title}
-                    value={liveDashboard.smart_cards.nutrition.value}
-                    detail={liveDashboard.smart_cards.nutrition.detail}
-                    macros={liveDashboard.smart_cards.nutrition.macros}
-                    delay={0.1}
-                />
-                <HydrationCard
-                    goal={liveDashboard.dashboard_meta.hydration_goal}
-                    delay={0.2}
-                />
+                <NutritionCard data={liveDashboard.smart_cards.nutrition} />
+                <HydrationCard />
                 <EnergyCard
                     level={liveDashboard.dashboard_meta.energy_level}
                     chronotype={plan.chronotype}
-                    delay={0.3}
                 />
             </div>
+
+            {/* Dermo-Genetics Section */}
+            {liveDashboard.skin_hair_profile && (
+                <div className="mb-12">
+                    <SkinHairCard profile={liveDashboard.skin_hair_profile} delay={0.6} />
+                </div>
+            )}
 
             {/* Bio-Timeline */}
             <BioTimeline

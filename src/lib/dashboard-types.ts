@@ -51,8 +51,20 @@ export interface DashboardMeta {
     hydration_goal: number;
 }
 
+export interface SkinHairProfile {
+    skinType: string; // e.g., "Lipid Dry" or "Sebum Rich"
+    hairType: string; // e.g., "Androgenic Risk" or "Structural Thin"
+    protocol: {
+        morning: string; // روتین صبح
+        evening: string; // روتین شب
+        hero_ingredient: string; // ماده موثره اصلی (مثل رتینول، نیاسینامید)
+    };
+    circadian_tip: string; // نکته زمانی
+}
+
 export interface LiveDashboard {
     dashboard_meta: DashboardMeta;
     smart_cards: SmartCards;
+    skin_hair_profile?: SkinHairProfile;
     timeline: TimelineItem[];
 }

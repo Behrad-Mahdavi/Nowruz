@@ -14,13 +14,16 @@ interface SmartCardBaseProps {
 
 // --- کارت تغذیه (Nutrition) ---
 interface NutritionCardProps extends SmartCardBaseProps {
-    title: string;
-    value: string;
-    detail: string;
-    macros?: { protein: number; carbs: number; fats: number };
+    data: {
+        title: string;
+        value: string;
+        detail: string;
+        macros?: { protein: number; carbs: number; fats: number };
+    };
 }
 
-export function NutritionCard({ title, value, detail, macros, delay = 0 }: NutritionCardProps) {
+export function NutritionCard({ data, delay = 0 }: NutritionCardProps) {
+    const { title, value, detail, macros } = data;
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -30,12 +33,12 @@ export function NutritionCard({ title, value, detail, macros, delay = 0 }: Nutri
         >
             <div className="flex items-center justify-between mb-4">
                 {/* آیکون آووکادو بزرگ: 50px */}
-                <Image 
-                    src="/icons/Avacadoo.svg" 
-                    alt="Nutrition" 
-                    width={50} 
-                    height={50} 
-                    className="w-12 h-12 object-contain drop-shadow-sm" 
+                <Image
+                    src="/icons/Avacadoo.svg"
+                    alt="Nutrition"
+                    width={50}
+                    height={50}
+                    className="w-12 h-12 object-contain drop-shadow-sm"
                 />
                 <span className="text-xs font-black uppercase tracking-widest text-accent/60">{title}</span>
             </div>
@@ -61,10 +64,10 @@ export function NutritionCard({ title, value, detail, macros, delay = 0 }: Nutri
 
 // --- کارت آب (Hydration) ---
 interface HydrationCardProps extends SmartCardBaseProps {
-    goal: number;
+    goal?: number;
 }
 
-export function HydrationCard({ goal, delay = 0 }: HydrationCardProps) {
+export function HydrationCard({ goal = 8, delay = 0 }: HydrationCardProps) {
     const [count, setCount] = useState(goal);
 
     const handleDrink = () => {
@@ -85,11 +88,11 @@ export function HydrationCard({ goal, delay = 0 }: HydrationCardProps) {
         >
             <div className="flex items-center justify-between mb-4">
                 {/* آیکون بطری آب خیلی بزرگ: 60px */}
-                <Image 
-                    src="/icons/Water Bottle.svg" 
-                    alt="Water" 
-                    width={60} 
-                    height={60} 
+                <Image
+                    src="/icons/Water Bottle.svg"
+                    alt="Water"
+                    width={60}
+                    height={60}
                     className="w-14 h-14 object-contain drop-shadow-sm"
                 />
                 <span className="text-xs font-black uppercase tracking-widest text-primary/60">هیدراتاسیون</span>
@@ -141,11 +144,11 @@ export function EnergyCard({ level, chronotype, delay = 0 }: EnergyCardProps) {
         >
             <div className="flex items-center justify-between mb-4">
                 {/* آیکون بازو (قدرت) بزرگ: 50px */}
-                <Image 
-                    src="/icons/Biceps.svg" 
-                    alt="Energy" 
-                    width={50} 
-                    height={50} 
+                <Image
+                    src="/icons/Biceps.svg"
+                    alt="Energy"
+                    width={50}
+                    height={50}
                     className="w-12 h-12 object-contain drop-shadow-sm"
                 />
                 <span className="text-xs font-black uppercase tracking-widest text-primary/60">سطح انرژی</span>

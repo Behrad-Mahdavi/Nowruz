@@ -1,30 +1,21 @@
 import { AssessmentData, Chronotype, GeneratedPlan, Somatotype } from "./types";
-import { TimelineItem, DashboardMeta, LiveDashboard, SmartCards } from "./dashboard-types";
+import { TimelineItem, DashboardMeta, LiveDashboard, SmartCards, SkinHairProfile } from "./dashboard-types";
 
 // ==========================================
 // 1. UTILITY & HELPER FUNCTIONS (MATH CORE)
 // ==========================================
 
-/**
- * Converts "HH:MM" string to minutes from midnight.
- */
 const timeToMinutes = (time: string): number => {
     const [h, m] = time.split(':').map(Number);
     return h * 60 + m;
 };
 
-/**
- * Converts minutes from midnight back to "HH:MM" string.
- */
 const minutesToTime = (minutes: number): string => {
     let h = Math.floor(minutes / 60) % 24;
     let m = minutes % 60;
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
 };
 
-/**
- * Calculates BMR using Revised Harris-Benedict Equation.
- */
 const calculateBMR = (weight: number, height: number, age: number, gender: 'male' | 'female'): number => {
     if (gender === 'male') {
         return 88.362 + (13.397 * weight) + (4.799 * height) - (5.677 * age);
@@ -37,10 +28,6 @@ const calculateBMR = (weight: number, height: number, age: number, gender: 'male
 // 2. ADVANCED BIO-ANALYTICS
 // ==========================================
 
-/**
- * Advanced Somatotyping: Uses Wrist Size + BMI to determine "Phenotype".
- * Solves the issue where a skinny-fat person is mislabeled.
- */
 export function calculateAdvancedSomatotype(gender: 'male' | 'female', wristSize: number, bmi: number): Somatotype {
     let score = 0;
 
@@ -63,10 +50,6 @@ export function calculateAdvancedSomatotype(gender: 'male' | 'female', wristSize
     return 'mesomorph';
 }
 
-/**
- * Calculates Chronotype based on "Mid-Sleep Point" theory (more accurate than just wake time).
- * Assuming 8 hours of sleep for calculation normalization.
- */
 export function calculateChronotype(wakeTime: string): Chronotype {
     if (!wakeTime) return 'bear';
     
@@ -79,20 +62,9 @@ export function calculateChronotype(wakeTime: string): Chronotype {
     return 'bear';
 }
 
-/**
- * Calculates Bio-Rhythm Energy State relative to Wake Time.
- * This is dynamic, not fixed to clock hours.
- */
 export function getRelativeEnergyLevel(wakeTime: string, currentHour: number): 'Low' | 'Medium' | 'High' {
     const wakeHour = parseInt(wakeTime.split(':')[0]);
     const hoursAwake = currentHour - wakeHour;
-
-    // Biological Rhythms (approximate)
-    // 0-2 hours after wake: Sleep Inertia (Low/Medium)
-    // 2-7 hours after wake: Cortisol Peak (High)
-    // 7-9 hours after wake: Post-Lunch Dip (Low)
-    // 9-13 hours after wake: Second Wind (Medium/High)
-    // 14+ hours: Melatonin Onset (Low)
 
     if (hoursAwake < 0) return 'Low'; // Sleeping or pre-wake
     if (hoursAwake <= 2) return 'Medium'; // Waking up
@@ -167,12 +139,10 @@ export function generateTimeline(chronotype: Chronotype, somatotype: Somatotype,
     addEvent(0.25, 'هیدراتاسیون + الکترولیت', 'other', 'droplet');
 
     // 2. Breakfast (Wake + 1-2h depending on Somatotype)
-    // Endomorphs should delay breakfast (Intermittent Fasting Lite)
     const breakfastOffset = somatotype === 'endomorph' ? 2.5 : 1; 
     addEvent(breakfastOffset, 'صبحانه', 'meal', 'sun');
 
     // 3. Lunch (Wake + 5-6h)
-    // This is where we sell the product
     addEvent(6, somatotype === 'mesomorph' ? 'ناهار (سوخت عضله)' : 'ناهار (کنترل انسولین)', 'meal', 'flame', {
         code: 'NORUZ1405',
         link: '/shop/promo',
@@ -180,11 +150,9 @@ export function generateTimeline(chronotype: Chronotype, somatotype: Somatotype,
     });
 
     // 4. Energy Dip / Snack (Wake + 9h)
-    // Wolves need a boost here before their peak
     addEvent(9, 'میان‌وعده عصرانه', 'meal', 'leaf');
 
     // 5. Workout (Chronotype optimized)
-    // Lion: +10h, Bear: +11h, Wolf: +12h (Relative to wake)
     let workoutOffset = 11;
     if (chronotype === 'lion') workoutOffset = 10;
     if (chronotype === 'wolf') workoutOffset = 12;
@@ -211,55 +179,40 @@ export function generateDashboardMeta(chronotype: Chronotype, wakeTime: string, 
     return {
         greeting,
         energy_level: energy,
-        hydration_goal: 8 // Could be calculated based on weight (Weight * 0.033)
+        hydration_goal: 8 
     };
 }
 
-// ==========================================
-// 4. MAIN ORCHESTRATOR
-// ==========================================
-
 export function generatePlan(data: AssessmentData): GeneratedPlan {
-    // 1. Calculate Base Metrics
     const { value: bmiValue, status: bmiStatus } = calculateBMI(data.weight, data.height);
-    
-    // 2. Advanced Typing (Hybrid Logic)
     const somatotype = calculateAdvancedSomatotype(data.gender, data.wristSize, bmiValue);
     const chronotype = calculateChronotype(data.wakeTime);
-    
-    // 3. BMR & Caloric Needs
-    // TDEE Multiplier: Sedentary 1.2, Active 1.55 (simplified based on user input could be added)
     const bmr = calculateBMR(data.weight, data.height, data.age || 30, data.gender);
-    const tdee = Math.round(bmr * 1.35); // Average activity factor
+    const tdee = Math.round(bmr * 1.35);
 
-    // 4. Recommendation Engine
     let nutritionRec = `کالری هدف روزانه: ${tdee} کالری. `;
     let workoutRec = "";
     let supplements = ["Multivitamin"];
 
-    // Nutrition Logic
     if (somatotype === 'endomorph') {
-        nutritionRec += "بهترین استراتژی برای شما 'چرخه کربوهیدرات' (Carb Cycling) است. صبحانه را فاقد قند نگه دارید.";
+        nutritionRec += "بهترین استراتژی برای شما 'چرخه کربوهیدرات' است. صبحانه را فاقد قند نگه دارید.";
     } else if (somatotype === 'ectomorph') {
         nutritionRec += "شما به کالری مازاد نیاز دارید. هر ۳ ساعت یک وعده ترکیبی میل کنید.";
     } else {
         nutritionRec += "بدن شما پاسخ عالی به پروتئین می‌دهد. روی ۴۰٪ پروتئین در هر وعده تمرکز کنید.";
     }
 
-    // Context & Stress Logic
     if (data.stressLevel === 'high') {
-        supplements.push('Magnesium Glycinate (Night)', 'Ashwagandha (Afternoon)');
-        nutritionRec += " (به دلیل استرس بالا، مصرف کافئین را بعد از ساعت ۱۴ محدود کنید).";
+        supplements.push('منیزیم (قبل خواب)');
+        nutritionRec += " (مصرف کافئین بعد از ساعت ۱۴ ممنوع).";
     }
 
-    // Workout Logic
     workoutRec = chronotype === 'wolf' 
         ? "اوج انرژی شما عصرهاست. رکوردهای سنگین را برای ساعت ۱۹ به بعد بگذارید." 
         : "تمرینات خود را در پنجره ۶ تا ۱۰ ساعت بعد از بیداری انجام دهید.";
 
-    // Local Context
     if (data.neighborhood && data.neighborhood.includes('وکیل')) {
-        workoutRec += " پیشنهاد مکان: دویدن اینتروال در پارک ملت (شیب‌های شرقی).";
+        workoutRec += " پیشنهاد مکان: دویدن اینتروال در پارک ملت.";
     }
 
     return {
@@ -276,7 +229,6 @@ export function generatePlan(data: AssessmentData): GeneratedPlan {
     };
 }
 
-// Helper for BMI (kept simple as it is standard)
 function calculateBMI(weight: number, height: number) {
     const h = height / 100;
     const val = parseFloat((weight / (h * h)).toFixed(1));
@@ -285,4 +237,78 @@ function calculateBMI(weight: number, height: number) {
     else if (val >= 25 && val < 30) status = 'Overweight';
     else if (val >= 30) status = 'Obese';
     return { value: val, status };
+}
+
+/**
+ * ==========================================
+ * NEW: Dermo-Nutritional Algorithm (v2.0)
+ * Focus: Iranian Functional Foods (No Meds)
+ * ==========================================
+ */
+export function generateSkinHairProfile(
+    somatotype: Somatotype,
+    chronotype: Chronotype,
+    stressLevel: string,
+    age: number
+): SkinHairProfile {
+    let skinType = "Normal";
+    let hairType = "Normal";
+    let morning = ""; // Now Morning Nutrition
+    let evening = ""; // Now Evening Nutrition
+    let superFood = ""; // The Hero Food
+    let tip = "";
+
+    // 1. Somatotype Analysis (Hormonal Baseline -> Food Solution)
+    if (somatotype === 'endomorph') {
+        skinType = "مستعد چربی (حساس به انسولین)";
+        hairType = "نیاز به سم‌زدایی فولیکول";
+        // Strategy: Liver Detox & Blood Sugar Control
+        morning = "نان جو + گردو (کربوهیدرات پیچیده برای کنترل سبوم)";
+        evening = "خوراک عدسی با گلپر (فیبر بالا برای دفع استروژن)";
+        superFood = "زرشک (Zereshk)"; // پاکسازی کبد = پوست شفاف
+    } else if (somatotype === 'mesomorph') {
+        skinType = "مقاوم / مستعد منافذ باز";
+        hairType = "ریسک ریزش آندروژنیک (ارثی)";
+        // Strategy: Natural DHT Blockers & Antioxidants
+        morning = "املت گوجه‌فرنگی (لیکوپن برای محافظت نوری پوست)";
+        evening = "ماست کم‌چرب + شوید + پودر جوانه گندم (ویتامین B)";
+        superFood = "تخمه کدو (Pumpkin Seeds)"; // مهارکننده طبیعی DHT
+    } else { // Ectomorph
+        skinType = "نازک و خشک (سد دفاعی ضعیف)";
+        hairType = "نازک و شکننده (کمبود املاح)";
+        // Strategy: Healthy Fats & Hydration
+        morning = "شیر و عسل + بادام درختی (بمب انرژی و کلسیم)";
+        evening = "سوپ پای مرغ یا قلم (کلاژن‌سازی طبیعی)";
+        superFood = "روغن زیتون (Olive Oil)"; // ویتامین E برای پوست خشک
+    }
+
+    // 2. Chronotype Modifier (Eating Time)
+    if (chronotype === 'wolf') {
+        tip = "کبد شما صبح‌ها کند است؛ ناشتا یک لیوان خاکشیر با آب ولرم بخورید.";
+        if(somatotype === 'endomorph') morning += " + دارچین"; // Boost metabolism
+    } else if (chronotype === 'lion') {
+        tip = "شام را قبل از ساعت ۱۹ بخورید تا هورمون رشد (GH) در خواب ترشح شود.";
+    } else {
+        tip = "سعی کنید زمان شام خوردن‌تان هر شب ثابت باشد (تنظیم ساعت بیولوژیک).";
+    }
+
+    // 3. Stress Modifier (Anti-Cortisol Foods)
+    if (stressLevel === 'high') {
+        hairType += " (ریزش استرسی)";
+        // Iranian herbal remedies
+        superFood += " + دمنوش گل‌گاو‌زبان"; 
+        evening = "سالاد کاهو با روغن زیتون (لاکتوکارین کاهو خواب‌آور است)";
+    }
+
+    // 4. Age Logic
+    if (age > 35) {
+        superFood += " + سنجد (با هسته آسیاب شده)"; // Bone & Skin density
+    }
+
+    return {
+        skinType,
+        hairType,
+        protocol: { morning, evening, hero_ingredient: superFood },
+        circadian_tip: tip
+    };
 }
