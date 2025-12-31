@@ -134,7 +134,7 @@ export default function DashboardPage() {
                     animate={{ opacity: 1, scale: 1 }}
                     className="flex flex-col items-end gap-2"
                 >
-                    <div className="w-14 h-14 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center text-2xl">
+                    <div className="w-14 h-14 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center text-2xl display:none">
                         👤
                     </div>
                     <span className="text-[10px] font-black uppercase tracking-widest opacity-30">حساب کاربری</span>
