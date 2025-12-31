@@ -24,7 +24,7 @@ export default function Home() {
         </h1>
 
         <p className="text-xl md:text-2xl mb-12 font-light opacity-90">
-          معماری مجدد بدن شما با هوش مصنوعی.
+         
           <br />
           یک برنامه کاملاً شخصی‌سازی‌شده برای شما.
         </p>
@@ -47,7 +47,7 @@ export default function Home() {
         transition={{ delay: 1, duration: 1 }}
         className="absolute bottom-8 text-sm opacity-50"
       >
-        طراحی شده با ❤️ در مشهد
+       
       </motion.div>
     </main>
   );
