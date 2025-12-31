@@ -129,8 +129,9 @@ export async function verifyOTP(phoneNumber: string, code: string): Promise<{ su
         });
 
         if (signInError) {
+            console.log('SignIn failed, attempting creation...', signInError.message);
+
             // 2. If sign in fails, try to sign up
-            console.log('User not found, creating new user...');
             const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
                 email: fakeEmail,
                 password: fakePassword,
@@ -147,14 +148,24 @@ export async function verifyOTP(phoneNumber: string, code: string): Promise<{ su
                 return { success: false, error: 'خطا در ایجاد حساب کاربری' };
             }
 
-            // If signup is successful but session is null (e.g. email confirm required), 
-            // we should normally handle it. But with auto-confirm enabled or this flow, 
-            // we expect a session.
+            // CRITICAL: Check for session immediately after signup
             if (!signUpData.session) {
-                // For now, let's assume auto-confirm is OFF. 
-                // We might need to attempt sign-in again or check project settings.
-                // However, usually signUp returns session if email confirm is disabled.
+                // If no session, try signing in one more time (sometimes needed)
+                const { data: retryData, error: retryError } = await supabase.auth.signInWithPassword({
+                    email: fakeEmail,
+                    password: fakePassword,
+                });
+
+                if (retryError || !retryData.session) {
+                    console.error('Session creation failed. Confirm Email might be ON.');
+                    return {
+                        success: false,
+                        error: 'خطا سیستمی: لطفا در تنظیمات Supabase گزینه "Confirm Email" را غیرفعال کنید.'
+                    };
+                }
             }
+        } else if (!signInData.session) {
+            return { success: false, error: 'خطا در دریافت نشست کاربری' };
         }
 
         return { success: true };

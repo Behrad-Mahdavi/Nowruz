@@ -52,13 +52,13 @@ export function calculateAdvancedSomatotype(gender: 'male' | 'female', wristSize
 
 export function calculateChronotype(wakeTime: string): Chronotype {
     if (!wakeTime) return 'bear';
-    
+
     const wakeMin = timeToMinutes(wakeTime);
     // Lion: Wakes up before 06:30
-    if (wakeMin < 390) return 'lion'; 
+    if (wakeMin < 390) return 'lion';
     // Wolf: Wakes up after 08:30
-    if (wakeMin > 510) return 'wolf'; 
-    
+    if (wakeMin > 510) return 'wolf';
+
     return 'bear';
 }
 
@@ -116,12 +116,48 @@ export function generateSmartCards(somatotype: Somatotype, chronotype: Chronotyp
     };
 }
 
-export function generateTimeline(chronotype: Chronotype, somatotype: Somatotype, wakeTime: string, currentHour: number): TimelineItem[] {
+import { MENU_ITEMS, MenuItem } from "./menu-data";
+
+// تابع کمکی برای انتخاب غذا بر اساس الگوریتم
+function getSuggestedMeal(type: 'breakfast' | 'lunch' | 'dinner', somatotype: Somatotype, goal: string): MenuItem {
+    // فیلتر اولیه بر اساس وعده
+    let candidates = MENU_ITEMS.filter(item => {
+        if (type === 'breakfast') return item.category === 'breakfast';
+        if (type === 'lunch') return item.category === 'main' || (item.category === 'salad' && item.tags.includes('high-protein'));
+        if (type === 'dinner') return item.category === 'salad' || (item.category === 'main' && item.tags.includes('low-carb'));
+        return false;
+    });
+
+    // فیلتر ثانویه بر اساس تیپ بدنی
+    if (somatotype === 'endomorph') {
+        // اندومورف‌ها نباید پنینی یا پیتزا (کربوهیدرات بالا) بخورند
+        candidates = candidates.filter(item => !item.tags.includes('high-carb'));
+    } else if (somatotype === 'ectomorph') {
+        // اکتومورف‌ها نیاز به کربوهیدرات دارند
+        const highCarbs = candidates.filter(item => item.tags.includes('high-carb'));
+        if (highCarbs.length > 0) candidates = highCarbs;
+    }
+
+    // فیلتر نهایی بر اساس هدف
+    if (goal === 'muscle_gain') {
+        // سورت بر اساس پروتئین نزولی
+        candidates.sort((a, b) => b.protein - a.protein);
+    } else if (goal === 'weight_loss') {
+        // حذف غذاهای خیلی سنگین (پنینی/پیتزا) اگر مانده باشند و انتخاب سالادها
+        const salads = candidates.filter(item => item.category === 'salad' || item.id === 'veggie-plate');
+        if (salads.length > 0) candidates = salads;
+    }
+
+    // انتخاب بهترین گزینه (اولی) یا یک مورد رندوم از ۳ تای اول برای تنوع
+    return candidates.length > 0 ? candidates[0] : MENU_ITEMS[0]; // فال‌بک
+}
+
+export function generateTimeline(chronotype: Chronotype, somatotype: Somatotype, wakeTime: string, currentHour: number, goal: string = 'health'): TimelineItem[] {
     const wakeMin = timeToMinutes(wakeTime || '07:00');
     const timeline: TimelineItem[] = [];
 
     // --- Helper to add events relative to wake time ---
-    const addEvent = (offsetHours: number, title: string, type: TimelineItem['type'], icon: string, promo?: any) => {
+    const addEvent = (offsetHours: number, title: string, type: TimelineItem['type'], icon: string, foodItem?: MenuItem) => {
         const eventTimeMin = wakeMin + (offsetHours * 60);
         const timeString = minutesToTime(eventTimeMin);
         const eventHour = Math.floor(eventTimeMin / 60) % 24; // Handle past midnight
@@ -130,27 +166,32 @@ export function generateTimeline(chronotype: Chronotype, somatotype: Somatotype,
         if (currentHour > eventHour + 1) status = 'done';
         else if (currentHour >= eventHour - 1 && currentHour <= eventHour + 1) status = 'active';
 
-        const item: TimelineItem = { time: timeString, type, title, status, icon };
-        if (promo) { item.is_promo = true; item.promo_data = promo; }
+        const item: TimelineItem = {
+            time: timeString,
+            type,
+            title,
+            status,
+            icon,
+            action_link: foodItem ? foodItem.snappfood_link : undefined,
+            action_label: foodItem ? 'سفارش از اسنپ‌فود' : undefined
+        };
         timeline.push(item);
     };
 
     // 1. Morning Hydration (Wake + 15min)
     addEvent(0.25, 'هیدراتاسیون + الکترولیت', 'other', 'droplet');
 
-    // 2. Breakfast (Wake + 1-2h depending on Somatotype)
-    const breakfastOffset = somatotype === 'endomorph' ? 2.5 : 1; 
-    addEvent(breakfastOffset, 'صبحانه', 'meal', 'sun');
+    // 2. Breakfast (Real Food)
+    const breakfastItem = getSuggestedMeal('breakfast', somatotype, goal);
+    const breakfastOffset = somatotype === 'endomorph' ? 2.5 : 1;
+    addEvent(breakfastOffset, `صبحانه: ${breakfastItem.name}`, 'meal', 'sun', breakfastItem);
 
-    // 3. Lunch (Wake + 5-6h)
-    addEvent(6, somatotype === 'mesomorph' ? 'ناهار (سوخت عضله)' : 'ناهار (کنترل انسولین)', 'meal', 'flame', {
-        code: 'NORUZ1405',
-        link: '/shop/promo',
-        description: 'پیشنهاد: بشقاب فیبر و پروتئین ویتا'
-    });
+    // 3. Lunch (Real Food)
+    const lunchItem = getSuggestedMeal('lunch', somatotype, goal);
+    addEvent(6, `ناهار: ${lunchItem.name}`, 'meal', 'flame', lunchItem);
 
     // 4. Energy Dip / Snack (Wake + 9h)
-    addEvent(9, 'میان‌وعده عصرانه', 'meal', 'leaf');
+    addEvent(9, 'میان‌وعده عصرانه (میوه/آجیل)', 'meal', 'leaf');
 
     // 5. Workout (Chronotype optimized)
     let workoutOffset = 11;
@@ -158,8 +199,9 @@ export function generateTimeline(chronotype: Chronotype, somatotype: Somatotype,
     if (chronotype === 'wolf') workoutOffset = 12;
     addEvent(workoutOffset, 'تمرین تخصصی', 'workout', 'dumbbell');
 
-    // 6. Dinner (Wake + 13h)
-    addEvent(13.5, 'شام سبک (پروتئین)', 'meal', 'moon');
+    // 6. Dinner (Real Food)
+    const dinnerItem = getSuggestedMeal('dinner', somatotype, goal);
+    addEvent(13.5, `شام: ${dinnerItem.name}`, 'meal', 'moon', dinnerItem);
 
     // 7. Sleep (Wake + 16h)
     addEvent(16, 'خواب (ریکاوری)', 'sleep', 'moon');
@@ -169,7 +211,7 @@ export function generateTimeline(chronotype: Chronotype, somatotype: Somatotype,
 
 export function generateDashboardMeta(chronotype: Chronotype, wakeTime: string, currentHour: number): DashboardMeta {
     const energy = getRelativeEnergyLevel(wakeTime || '07:00', currentHour);
-    
+
     let greeting = "سلام قهرمان";
     if (currentHour >= 5 && currentHour < 12) greeting = "صبح بخیر، قهرمان";
     else if (currentHour >= 12 && currentHour < 17) greeting = "ظهر بخیر، قهرمان";
@@ -179,15 +221,15 @@ export function generateDashboardMeta(chronotype: Chronotype, wakeTime: string, 
     return {
         greeting,
         energy_level: energy,
-        hydration_goal: 8 
+        hydration_goal: 8
     };
 }
 
 export function generatePlan(data: AssessmentData): GeneratedPlan {
-    const { value: bmiValue, status: bmiStatus } = calculateBMI(data.weight, data.height);
-    const somatotype = calculateAdvancedSomatotype(data.gender, data.wristSize, bmiValue);
+    const { value: bmiValue, status: bmiStatus } = calculateBMI(data.weight || 75, data.height || 175);
+    const somatotype = calculateAdvancedSomatotype(data.gender || 'male', data.wristSize || 18, bmiValue);
     const chronotype = calculateChronotype(data.wakeTime);
-    const bmr = calculateBMR(data.weight, data.height, data.age || 30, data.gender);
+    const bmr = calculateBMR(data.weight || 75, data.height || 175, data.age || 30, data.gender || 'male');
     const tdee = Math.round(bmr * 1.35);
 
     let nutritionRec = `کالری هدف روزانه: ${tdee} کالری. `;
@@ -207,8 +249,8 @@ export function generatePlan(data: AssessmentData): GeneratedPlan {
         nutritionRec += " (مصرف کافئین بعد از ساعت ۱۴ ممنوع).";
     }
 
-    workoutRec = chronotype === 'wolf' 
-        ? "اوج انرژی شما عصرهاست. رکوردهای سنگین را برای ساعت ۱۹ به بعد بگذارید." 
+    workoutRec = chronotype === 'wolf'
+        ? "اوج انرژی شما عصرهاست. رکوردهای سنگین را برای ساعت ۱۹ به بعد بگذارید."
         : "تمرینات خود را در پنجره ۶ تا ۱۰ ساعت بعد از بیداری انجام دهید.";
 
     if (data.neighborhood && data.neighborhood.includes('وکیل')) {
@@ -229,7 +271,7 @@ export function generatePlan(data: AssessmentData): GeneratedPlan {
     };
 }
 
-function calculateBMI(weight: number, height: number) {
+export function calculateBMI(weight: number, height: number) {
     const h = height / 100;
     const val = parseFloat((weight / (h * h)).toFixed(1));
     let status: GeneratedPlan['bmiStatus'] = 'Normal';
@@ -285,7 +327,7 @@ export function generateSkinHairProfile(
     // 2. Chronotype Modifier (Eating Time)
     if (chronotype === 'wolf') {
         tip = "کبد شما صبح‌ها کند است؛ ناشتا یک لیوان خاکشیر با آب ولرم بخورید.";
-        if(somatotype === 'endomorph') morning += " + دارچین"; // Boost metabolism
+        if (somatotype === 'endomorph') morning += " + دارچین"; // Boost metabolism
     } else if (chronotype === 'lion') {
         tip = "شام را قبل از ساعت ۱۹ بخورید تا هورمون رشد (GH) در خواب ترشح شود.";
     } else {
@@ -296,7 +338,7 @@ export function generateSkinHairProfile(
     if (stressLevel === 'high') {
         hairType += " (ریزش استرسی)";
         // Iranian herbal remedies
-        superFood += " + دمنوش گل‌گاو‌زبان"; 
+        superFood += " + دمنوش گل‌گاو‌زبان";
         evening = "سالاد کاهو با روغن زیتون (لاکتوکارین کاهو خواب‌آور است)";
     }
 

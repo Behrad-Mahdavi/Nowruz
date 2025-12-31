@@ -21,6 +21,8 @@ export interface TimelineItem {
     icon: string; // کلید آیکون مثل 'sun', 'flame', 'droplet'
     is_promo?: boolean;
     promo_data?: PromoData;
+    action_link?: string;
+    action_label?: string;
 }
 
 export interface NutritionCard {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useQuizStore } from '@/lib/store';
@@ -13,6 +13,7 @@ import { BioTimeline } from '@/components/features/BioTimeline';
 import { NutritionCard, HydrationCard, EnergyCard } from '@/components/features/SmartCard';
 import { PromoModal } from '@/components/features/PromoModal';
 import { SkinHairCard } from '@/components/features/SkinHairCard';
+import { PackagesSection } from '@/components/features/PackagesSection';
 import { Activity, Sun, Utensils } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -22,8 +23,12 @@ export default function DashboardPage() {
     const [liveDashboard, setLiveDashboard] = useState<LiveDashboard | null>(null);
     const [loading, setLoading] = useState(true);
     const [promoModal, setPromoModal] = useState<{ code: string; link: string; description?: string } | null>(null);
+    const initialized = useRef(false);
 
     useEffect(() => {
+        if (initialized.current) return;
+        initialized.current = true;
+
         const loadDashboard = async () => {
             // شبیه‌سازی لودینگ اولیه
             await new Promise(r => setTimeout(r, 800));
@@ -48,7 +53,8 @@ export default function DashboardPage() {
                 generated.chronotype,
                 generated.somatotype,
                 wakeTime,
-                currentHour
+                currentHour,
+                mainGoal
             );
 
             // 2. دیتای متا (سلام و انرژی نسبی)
@@ -157,6 +163,9 @@ export default function DashboardPage() {
                 timeline={liveDashboard.timeline}
                 onPromoClick={(promo) => setPromoModal(promo)}
             />
+
+            {/* Packages Section */}
+            <PackagesSection />
 
             {/* Analysis Section */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">

@@ -110,17 +110,18 @@ export function BioTimeline({ timeline, onPromoClick }: BioTimelineProps) {
                                         </p>
                                     </div>
                                 </div>
-
                                 {/* دکمه اکشن */}
-                                {isActive && item.is_promo && item.promo_data && (
-                                    <motion.button
+                                {isActive && item.action_link && (
+                                    <motion.a
+                                        href={item.action_link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
                                         whileTap={{ scale: 0.95 }}
-                                        onClick={() => onPromoClick(item.promo_data!)}
-                                        className="mt-4 w-full bg-primary text-white text-sm font-bold py-3 px-4 rounded-xl shadow-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+                                        className="mt-4 w-full bg-[#FF00A6] text-white text-sm font-bold py-3 px-4 rounded-xl shadow-lg hover:bg-[#D9008D] transition-colors flex items-center justify-center gap-2"
                                     >
-                                        <span>🎁</span>
-                                        <span>🎁 دریافت پیشنهاد حس‌خوب</span>
-                                    </motion.button>
+                                        <span>🛵</span>
+                                        <span>{item.action_label || 'سفارش از اسنپ‌فود'}</span>
+                                    </motion.a>
                                 )}
                             </motion.div>
                         );
