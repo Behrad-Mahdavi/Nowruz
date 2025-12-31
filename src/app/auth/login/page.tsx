@@ -86,7 +86,7 @@ function LoginContent() {
                     />
 
                     <Button
-                        className="w-full h-14 text-lg rounded-2xl"
+                        className="w-full h-14 text-lg rounded-2xl text-white"
                         onClick={handleSendOTP}
                         disabled={loading}
                     >
