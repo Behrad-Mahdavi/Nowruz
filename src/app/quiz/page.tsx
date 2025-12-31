@@ -9,6 +9,12 @@ import { ArrowLeft, ArrowRight, Ruler, Scale } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
 
+// ✅ ۱. تابع تبدیل اعداد فارسی به انگلیسی
+const toEnglishDigits = (str: string) => {
+    if (!str) return '';
+    return str.replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+};
+
 export default function QuizPage() {
     const router = useRouter();
     const { currentStep, nextStep, prevStep, data, setData } = useQuizStore();
@@ -17,6 +23,23 @@ export default function QuizPage() {
         enter: { x: 50, opacity: 0 },
         center: { x: 0, opacity: 1 },
         exit: { x: -50, opacity: 0 },
+    };
+
+    // ✅ ۲. تابع هندل کردن ورودی‌های عددی
+    const handleNumericChange = (value: string, field: keyof typeof data) => {
+        // تبدیل به انگلیسی
+        const englishValue = toEnglishDigits(value);
+        
+        // حذف کاراکترهای غیر عددی (برای اطمینان)
+        const cleanValue = englishValue.replace(/[^0-9.]/g, '');
+
+        if (cleanValue === '') {
+            // اگر خالی بود، مقدار را حذف کن (یا undefined بگذار)
+            setData({ [field]: undefined } as any);
+        } else {
+            // تبدیل به عدد و ذخیره
+            setData({ [field]: parseInt(cleanValue) });
+        }
     };
 
     const handleNext = () => {
@@ -40,7 +63,6 @@ export default function QuizPage() {
                     <div className="space-y-6">
                         <h2 className="text-3xl font-black text-center text-primary">جنسیت شما؟</h2>
                         <div className="grid grid-cols-2 gap-4">
-                            {/* چون آیکون جنسیتی خاصی در لیست نبود، از ایموجی با استایل بزرگ استفاده میکنیم */}
                             <OptionCard label="آقا" selected={data.gender === 'male'} onClick={() => setData({ gender: 'male' })} icon="👨" isImage={false} />
                             <OptionCard label="خانم" selected={data.gender === 'female'} onClick={() => setData({ gender: 'female' })} icon="👩" isImage={false} />
                         </div>
@@ -50,7 +72,15 @@ export default function QuizPage() {
                 return (
                     <div className="space-y-6">
                         <h2 className="text-3xl font-black text-center text-primary">سن شما؟</h2>
-                        <input type="number" value={data.age || ''} onChange={(e) => setData({ age: parseInt(e.target.value) })} className="w-full text-5xl font-black text-center p-6 rounded-3xl border-2 border-primary/10 outline-none bg-white focus:border-accent transition-colors placeholder:text-gray-200" placeholder="مثال: ۲۸" autoFocus />
+                        <input 
+                            type="tel" // ✅ تغییر به tel برای پشتیبانی بهتر
+                            inputMode="numeric" // ✅ کیبورد عددی موبایل
+                            value={data.age || ''} 
+                            onChange={(e) => handleNumericChange(e.target.value, 'age')} 
+                            className="w-full text-5xl font-black text-center p-6 rounded-3xl border-2 border-primary/10 outline-none bg-white focus:border-accent transition-colors placeholder:text-gray-200" 
+                            placeholder="مثال: ۲۸" 
+                            autoFocus 
+                        />
                     </div>
                 );
             case 2: // قد و وزن
@@ -62,13 +92,27 @@ export default function QuizPage() {
                                 <div className="p-3 bg-accent/10 rounded-xl">
                                     <Ruler className="w-6 h-6 text-accent" />
                                 </div>
-                                <input type="number" value={data.height || ''} onChange={(e) => setData({ height: parseInt(e.target.value) })} className="flex-1 text-2xl font-bold text-center bg-transparent outline-none placeholder:text-gray-300" placeholder="قد (cm)" />
+                                <input 
+                                    type="tel"
+                                    inputMode="numeric"
+                                    value={data.height || ''} 
+                                    onChange={(e) => handleNumericChange(e.target.value, 'height')} 
+                                    className="flex-1 text-2xl font-bold text-center bg-transparent outline-none placeholder:text-gray-300" 
+                                    placeholder="قد (cm)" 
+                                />
                             </div>
                             <div className="flex items-center gap-4 bg-white p-4 rounded-2xl border border-gray-100">
                                 <div className="p-3 bg-accent/10 rounded-xl">
                                     <Scale className="w-6 h-6 text-accent" />
                                 </div>
-                                <input type="number" value={data.weight || ''} onChange={(e) => setData({ weight: parseInt(e.target.value) })} className="flex-1 text-2xl font-bold text-center bg-transparent outline-none placeholder:text-gray-300" placeholder="وزن (kg)" />
+                                <input 
+                                    type="tel"
+                                    inputMode="numeric"
+                                    value={data.weight || ''} 
+                                    onChange={(e) => handleNumericChange(e.target.value, 'weight')} 
+                                    className="flex-1 text-2xl font-bold text-center bg-transparent outline-none placeholder:text-gray-300" 
+                                    placeholder="وزن (kg)" 
+                                />
                             </div>
                         </div>
                     </div>
@@ -78,11 +122,17 @@ export default function QuizPage() {
                     <div className="space-y-6">
                         <h2 className="text-3xl font-black text-center text-primary">دور مچ دست؟</h2>
                         <div className="relative w-24 h-24 mx-auto opacity-50">
-                            {/* اینجا آیکون دست اگر داشتیم عالی بود، فعلا جاش خالی */}
                             <div className="absolute inset-0 border-4 border-dashed border-primary/20 rounded-full animate-spin-slow" />
                         </div>
                         <p className="text-center text-primary/60 font-medium">با انگشت شست و اشاره، دور مچ دست مخالف را بگیرید.</p>
-                        <input type="number" value={data.wristSize || ''} onChange={(e) => setData({ wristSize: parseInt(e.target.value) })} className="w-full text-5xl font-black text-center p-4 rounded-3xl border-2 border-primary/20 outline-none bg-white focus:border-accent" placeholder="cm" />
+                        <input 
+                            type="tel"
+                            inputMode="numeric"
+                            value={data.wristSize || ''} 
+                            onChange={(e) => handleNumericChange(e.target.value, 'wristSize')} 
+                            className="w-full text-5xl font-black text-center p-4 rounded-3xl border-2 border-primary/20 outline-none bg-white focus:border-accent" 
+                            placeholder="cm" 
+                        />
                         <div className="flex justify-center gap-4 text-xs font-bold text-primary/40">
                             <span className="bg-white px-3 py-1 rounded-lg">۱۵-۱۷: ریز</span>
                             <span className="bg-white px-3 py-1 rounded-lg">۱۷-۲۰: متوسط</span>
@@ -105,14 +155,13 @@ export default function QuizPage() {
                     <div className="space-y-6">
                         <h2 className="text-3xl font-black text-center text-primary">سطح استرس روزانه؟</h2>
                         <div className="grid grid-cols-3 gap-3">
-                            {/* برای استرس آیکون خاصی نداریم، ایموجی گویاتر است */}
                             <OptionCard label="کم" selected={data.stressLevel === 'low'} onClick={() => setData({ stressLevel: 'low' })} icon="😌" isImage={false} />
                             <OptionCard label="متوسط" selected={data.stressLevel === 'medium'} onClick={() => setData({ stressLevel: 'medium' })} icon="😐" isImage={false} />
                             <OptionCard label="زیاد" selected={data.stressLevel === 'high'} onClick={() => setData({ stressLevel: 'high' })} icon="😫" isImage={false} />
                         </div>
                     </div>
                 );
-            case 6: // هدف (جایگزینی با آیکون‌های اصلی)
+            case 6: // هدف
                 return (
                     <div className="space-y-6">
                         <h2 className="text-3xl font-black text-center text-primary">هدف اصلی؟</h2>
@@ -122,28 +171,28 @@ export default function QuizPage() {
                                 selected={data.mainGoal === 'weight_loss'} 
                                 onClick={() => setData({ mainGoal: 'weight_loss' })} 
                                 className="text-sm" 
-                                icon="/icons/Avacadoo.svg" // نماد رژیم/چربی سالم
+                                icon="/icons/Avacadoo.svg" 
                             />
                             <OptionCard 
                                 label="عضله سازی" 
                                 selected={data.mainGoal === 'muscle_gain'} 
                                 onClick={() => setData({ mainGoal: 'muscle_gain' })} 
                                 className="text-sm" 
-                                icon="/icons/Biceps.svg" // نماد قدرت
+                                icon="/icons/Biceps.svg" 
                             />
                             <OptionCard 
                                 label="افزایش انرژی" 
                                 selected={data.mainGoal === 'energy'} 
                                 onClick={() => setData({ mainGoal: 'energy' })} 
                                 className="text-sm" 
-                                icon="/icons/Dart.svg" // نماد تمرکز/انرژی
+                                icon="/icons/Dart.svg" 
                             />
                             <OptionCard 
                                 label="سلامتی" 
                                 selected={data.mainGoal === 'health_detox'} 
                                 onClick={() => setData({ mainGoal: 'health_detox' })} 
                                 className="text-sm" 
-                                icon="/icons/Heart.svg" // نماد سلامت قلب
+                                icon="/icons/Heart.svg" 
                             />
                         </div>
                     </div>
@@ -162,11 +211,9 @@ export default function QuizPage() {
 
     return (
         <main className="min-h-screen flex flex-col items-center justify-between p-6 bg-surface text-primary overflow-hidden relative">
-            {/* Background Elements */}
             <div className="absolute top-0 left-0 w-64 h-64 bg-accent/5 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
             
             <div className="w-full max-w-md mt-8 z-10">
-                {/* Progress Bar */}
                 <div className="flex justify-between text-xs font-bold text-primary/30 mb-2 px-1">
                     <span>شروع</span>
                     <span>{Math.round(((currentStep + 1) / 8) * 100)}%</span>

@@ -33,6 +33,7 @@ create table public.assessments (
   daily_activity text, -- 'sedentary', 'active'
   stress_level stress_type not null,
   main_goal goal_type not null,
+  neighborhood text, -- Added missing column
   created_at timestamptz default now()
 );
 
