@@ -281,6 +281,29 @@ export function calculateBMI(weight: number, height: number) {
     return { value: val, status };
 }
 
+// --- Lead Scoring Logic ---
+export function calculateLeadScore(data: AssessmentData, bmiStatus: string): number {
+    let score = 50; // Base score
+
+    // 1. BMI Factor
+    if (bmiStatus === 'Overweight') score += 15;
+    if (bmiStatus === 'Obese') score += 25;
+
+    // 2. Goal Factor (Urgency)
+    if (data.mainGoal === 'weight_loss') score += 10;
+
+    // 3. Location Factor (Buying Power Proxy)
+    const richNotebooks = ['وکیل', 'آباد', 'سجاد', 'هاشمیه', 'فلسطین'];
+    if (data.neighborhood && richNotebooks.some(n => data.neighborhood?.includes(n))) {
+        score += 20;
+    }
+
+    // 4. Age Factor (Health Consciousness)
+    if (data.age && data.age > 30) score += 10;
+
+    return Math.min(score, 100);
+}
+
 /**
  * ==========================================
  * NEW: Dermo-Nutritional Algorithm (v2.0)
