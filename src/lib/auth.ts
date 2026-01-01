@@ -1,90 +1,71 @@
 import { supabase } from './supabase';
 
-// Use require for kavenegar as it's a CommonJS module
-const Kavenegar = require('kavenegar');
 
-const KAVENEGAR_API_KEY = process.env.NEXT_PUBLIC_KAVENEGAR_API_KEY || '';
-const KAVENEGAR_SENDER = process.env.NEXT_PUBLIC_KAVENEGAR_SENDER || '2000660110';
-
-/**
- * Generates a random 4-digit OTP code
- */
-function generateOTP(): string {
-    return Math.floor(1000 + Math.random() * 9000).toString();
-}
 
 /**
  * Sends OTP via KavehNegar SMS
  */
-export async function sendOTP(phoneNumber: string): Promise<{ success: boolean; error?: string }> {
-    try {
-        const otp = generateOTP();
-        const expiryTime = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
-
-        // Normalize phone number (remove spaces, dashes, etc.)
-        const normalizedPhone = phoneNumber.replace(/[\s\-()]/g, '');
-
-        // Validate Iranian phone format
-        if (!normalizedPhone.match(/^(09\d{9}|9\d{9})$/)) {
-            return { success: false, error: 'شماره موبایل باید با 09 شروع شود' };
-        }
-
-        // Store OTP in Supabase
-        const { error: dbError } = await supabase
-            .from('otp_codes')
-            .insert({
-                phone: normalizedPhone,
-                code: otp,
-                expires_at: expiryTime.toISOString()
-            });
-
-        if (dbError) {
-            console.error('Database error:', dbError);
-            return { success: false, error: 'خطا در ذخیره‌سازی کد' };
-        }
-
-        console.log('OTP stored in database:', { phone: normalizedPhone, code: otp });
-
-        // Send SMS via KavehNegar
-        try {
-            if (!KAVENEGAR_API_KEY || KAVENEGAR_API_KEY === '') {
-                console.warn('KavehNegar API key not set, skipping SMS');
-                return { success: true, error: 'کد در دیتابیس ذخیره شد (SMS غیرفعال)' };
-            }
-
-            const api = Kavenegar.KavenegarApi({ apikey: KAVENEGAR_API_KEY });
-
-            // Simple ASCII message for testing (avoid encoding issues)
-            const message = `HesseKhub Code: ${otp} (5min)`;
-
-            await new Promise((resolve, reject) => {
-                api.Send({
-                    message: message,
-                    sender: KAVENEGAR_SENDER,
-                    receptor: normalizedPhone
-                }, (response: any, status: number) => {
-                    console.log('KavehNegar response:', { status, response });
-
-                    if (status === 200) {
-                        resolve(response);
-                    } else {
-                        reject(new Error(`SMS failed with status: ${status}`));
-                    }
-                });
-            });
-
-            console.log('SMS sent successfully');
-            return { success: true };
-        } catch (smsError: any) {
-            console.error('KavehNegar SMS error:', smsError.message || smsError);
-            // Return success anyway since OTP is stored
-            return { success: true, error: 'کد ذخیره شد اما پیامک ارسال نشد' };
-        }
-    } catch (error) {
-        console.error('Send OTP error:', error);
-        return { success: false, error: 'خطا در ارسال پیامک' };
-    }
+// Helper to normalize phone numbers
+function normalizePhone(phone: string): string {
+    return phone.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d).toString())
+        .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d).toString())
+        .replace(/\D/g, ''); // Remove non-digits
 }
+
+// تابع اصلاح شده ارسال پیامک
+export const sendOTP = async (mobile: string) => {
+    // 0. نرمال‌سازی شماره موبایل (تبدیل اعداد فارسی و حذف فاصله‌ها)
+    const normalizedMobile = normalizePhone(mobile);
+
+    // 1. تولید کد تصادفی
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    const expiresAt = new Date(Date.now() + 2 * 60 * 1000).toISOString(); // 2 minutes expiry
+
+    console.log("Generated Code:", code);
+
+    // 2. ذخیره در دیتابیس (Supabase)
+    const { error: dbError } = await supabase
+        .from('otp_codes')
+        .insert({
+            phone: normalizedMobile,
+            code,
+            expires_at: expiresAt
+        });
+
+    if (dbError) {
+        console.error('Supabase Error:', dbError);
+        return { success: false, error: dbError.message };
+    }
+
+    console.log(`OTP stored in database: {phone: '${normalizedMobile}', code: '${code}'}`);
+
+    // 3. ارسال درخواست به API Route خودمان (Proxy)
+    try {
+        const response = await fetch('/api/send-sms', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mobile: normalizedMobile, code }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || 'SMS sending failed');
+        }
+
+        console.log('SMS sent successfully via Server Route');
+        return { success: true, code }; // در پروداکشن کد را برنگردانید
+
+    } catch (error: any) {
+        console.error('Client SMS Error:', error);
+        // جهت تست، حتی اگر پیامک خطا داد، موفقیت برمی‌گردانیم تا لاگین انجام شود
+        // در پروداکشن این خط را بردارید:
+        return { success: true, code, warning: "SMS failed but process continued for testing" };
+
+        // در حالت واقعی این را برگردانید:
+        // return { success: false, error: error.message };
+    }
+};
 
 /**
  * Verifies OTP code
